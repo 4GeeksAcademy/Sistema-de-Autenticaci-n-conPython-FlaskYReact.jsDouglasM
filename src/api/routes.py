@@ -13,7 +13,7 @@ CORS(api)
 
 
 @api.route('/hello', methods=['GET'])
-@jwt_required()
+# @jwt_required()
 def handle_hello():
 
     user = get_jwt_identity()
@@ -28,7 +28,12 @@ def handle_hello():
 @api.route('login', methods=["POST"])
 def login():
     body = request.json
+
+    if not body or not body.get("email") or not body.get("password"):
+        return jsonify({"msg": "Email y contraseña son requeridos"}), 400
+    
     user = User.query.filter_by(email=body["email"]).first()
+
     if user and user.check_password(password=body["password"]):
         access_token = create_access_token(identity=user.serialize())
         return jsonify({"token":access_token})
@@ -39,8 +44,17 @@ def login():
     
 def register():
     body = request.json
-    user = User()
-    new_user = user.create_user(email=body["email"], password=body["password"] )
-    print(new_user)
-    return jsonify({"msg":"usuario creado"})
+    if not body or not body.get("email") or not body.get("password"):
+        return jsonify({"msg": "Email y contraseña son requeridos"}), 400
+
+    user = User.query.filter_by(email=body["email"]).first()
+    if user:
+        return jsonify({"msg": "El usuario ya existe"}), 400
+
+    new_user = User(email=body["email"])
+    new_user.set_password(body["password"])  
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify({"msg": "Usuario creado exitosamente"}), 201
 
